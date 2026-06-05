@@ -21,23 +21,24 @@
             }
 
             List<string> answers = await Task.Run(() => FilterWords(wordService.Words, inputs));
-            return await GenRaw(answers, wordService.Words);
+
+            // format answers list ToUpper
+            var answersArray = new string[answers.Count];
+            for (int i = 0; i < answers.Count; i++)
+                answersArray[i] = answers[i].ToUpper();
+
+            return await GenRaw(answersArray.ToList(), wordService.Words);
         }
 
-        public static async Task<(string, string)> GenRaw (List<string> unformattedAnswers, List<string> unformattedGuesses)
+        public static async Task<(string, string)> GenRaw (List<string> answers, List<string> unformattedGuesses)
         {
             string errorCode = "";
 
-            if (unformattedAnswers.Count == 0)
+            if (answers.Count == 0)
             {
                 errorCode = "No more moves left";
                 return ("", errorCode);
             }
-            // format lists ToUpper
-            var answersArray = new string[unformattedAnswers.Count];
-            for (int i = 0; i < unformattedAnswers.Count; i++)
-                answersArray[i] = unformattedAnswers[i].ToUpper();
-            List<string> answers = answersArray.ToList();
 
             Dictionary<string, long> scores = []; //answer , score
 
