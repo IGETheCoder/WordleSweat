@@ -21,48 +21,103 @@
             }
 
             List<string> answers = await Task.Run(() => FilterWords(wordService.Words, inputs));
-            return await GenRaw(answers);
+            return await GenRaw(answers, wordService.Words);
         }
 
-        public static async Task<(string, string)> GenRaw (List<string> answers)
+        public static async Task<(string, string)> GenRaw (List<string> unformattedAnswers, List<string> unformattedGuesses)
         {
             string errorCode = "";
 
-            if (answers.Count == 0)
+            if (unformattedAnswers.Count == 0)
             {
                 errorCode = "No more moves left";
                 return ("", errorCode);
             }
+            // format lists ToUpper
+            var answersArray = new string[unformattedAnswers.Count];
+            for (int i = 0; i < unformattedAnswers.Count; i++)
+                answersArray[i] = unformattedAnswers[i].ToUpper();
+            List<string> answers = answersArray.ToList();
 
             Dictionary<string, long> scores = []; //answer , score
 
             await Task.Run(() =>
             {
-                foreach (string word in answers)
+                int bucketSize = (int) Math.Pow(3, answers[0].Length);
+
+                foreach (string w in unformattedGuesses)
                 {
-                    long score = ScoreGuess(word, answers);
+                    string word = w.ToUpper();
+
+                    long score = ScoreGuess(word, answers, bucketSize);
                     scores.Add(word, score);
+
+                    Console.WriteLine($"word: {word} score: {score}");
                 }
             });
 
             string finalWord =
-                scores.MaxBy(entry => entry.Value).Key;
+                scores.MinBy(entry => entry.Value).Key;
 
             return (finalWord.ToUpper(), errorCode);
         }
-        private static long ScoreGuess (string guess, List<string> remainingAnswers)
+        private static long ScoreGuess (string guess, List<string> remainingAnswers, int bucketSize)
         {
-            Dictionary<int, long> buckets = []; //pattern , score
+            long[] buckets = new long[bucketSize];
 
-            // fancy stuff
+            for (int i = 0; i < buckets.Length; i++)
+                buckets[i] = 0; // reset all buckets
 
-            return 0;
+            foreach (string answer in remainingAnswers)
+            {
+                // if (guess == answer) continue;
+
+                int pattern = GetPattern(guess, answer);
+                buckets[pattern]++;
+            }
+
+            long score = 0;
+
+            foreach (var bucket in buckets)
+                score += bucket * bucket;
+
+            return score;
         }
-
-        private static bool IsEnglishLetter (char c)
+        private static int GetPattern (string guess, string answer)
         {
-            c = char.ToUpper(c);
-            return c >= 'A' && c <= 'Z';
+            Span<byte> pattern = stackalloc byte[guess.Length];
+            byte forbiddenIndexs = 0;
+
+            // greens
+            for (int i = 0; i < answer.Length; i++)
+            {
+                if (guess[i] == answer[i])
+                {
+                    pattern[i] = 2;
+                    forbiddenIndexs += (byte) (1 << i);
+                }
+            }
+            // yellows TODO
+            for (int i = 0; i < answer.Length; i++)
+            {
+                if (pattern[i] == 0) // not green
+                {
+                    for (int j = 0; j < answer.Length; j++)
+                    {
+                        if ((forbiddenIndexs & (1 << j)) != 0) continue;
+                        if (guess[i] != answer[j]) continue;
+
+                        pattern[i] = 1;
+                        forbiddenIndexs += (byte) (1 << j);
+                        break;
+                    }
+                }
+            }
+
+            int value = 0;
+            foreach (byte digit in pattern)
+                value = value * 3 + digit;
+            return value;
         }
         private static List<string> FilterWords (List<string> guesses, LetterCell[] filter)
         {
@@ -93,10 +148,10 @@
                     if (word[i] == cellChar)
                         return false;
 
-                    if (!yellowRepeats.ContainsKey(cellChar))
+                    if (!yellowRepeats.TryGetValue(cellChar, out int value))
                         yellowRepeats.Add(cellChar, 1);
                     else
-                        yellowRepeats[cellChar]++;
+                        yellowRepeats[cellChar] = ++value;
                 }
                 else if (cell.State == 2) // green
                 {
@@ -106,8 +161,11 @@
                 }
                 else // grey
                 {
-                    if (word[i] == cellChar)
-                        return false;
+                    for (int j = 0; j < filter.Length; j++)
+                    {
+                        if (word[j] == cellChar)
+                            return false;
+                    }
                 }
             }
 
@@ -135,6 +193,12 @@
             }
 
             return true;
+        }
+
+        private static bool IsEnglishLetter (char c)
+        {
+            c = char.ToUpper(c);
+            return c >= 'A' && c <= 'Z';
         }
     }
 }
