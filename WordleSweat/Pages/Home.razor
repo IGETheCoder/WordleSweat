@@ -1,0 +1,126 @@
+﻿@inject WordListService WordService
+@page "/"
+
+<PageTitle>Wordle Sweat</PageTitle>
+
+<h1>Wordle Sweat</h1>
+<p>Become a sweat at Wordle.</p>
+
+<div class="letter-row">
+    @for (int i = 0; i < 5; i++)
+    {
+        var index = i;
+
+        <div class="letter-cell">
+            <input class="letter-input @GetStateClass(letters[index].State)"
+                   maxlength="1"
+                   value="@letters[index].Value"
+                   @oninput="(e) => OnLetterInput(index, e)" />
+
+            <div class="color-row">
+                <button class="color grey"
+                        @onclick="() => SetState(index, 0)"></button>
+                <button class="color yellow"
+                        @onclick="() => SetState(index, 1)"></button>
+                <button class="color green"
+                        @onclick="() => SetState(index, 2)"></button>
+            </div>
+        </div>
+    }
+</div>
+
+<br>
+
+<button @onclick="Generate">
+    Generate
+</button>
+<button @onclick="GenerateAll">
+    Generate All
+</button>
+
+@if (string.IsNullOrEmpty(_error))
+{
+    @if (_generatingSingle)
+    {
+        <p>Generating...</p>
+    }
+    else if (!string.IsNullOrEmpty(_singleResult))
+    {
+        <p>@_singleResult</p>
+    }
+}
+else
+{
+    <div class="error">
+        <p>@_error</p>
+    </div>
+}
+
+@code {
+    private LetterCell[] letters = new LetterCell[5];
+
+    private string _singleResult = "";
+    private string _error = "";
+    private bool _generatingSingle = false;
+
+    private async Task Generate ()
+    {
+        _singleResult = "";
+        _generatingSingle = true;
+
+        await InvokeAsync(StateHasChanged);
+        (_singleResult, _error) = await GenerateBest.Gen(letters, WordService);
+
+        _generatingSingle = false;
+    }
+    private async Task GenerateAll ()
+    {
+        
+    }
+
+    protected override void OnInitialized ()
+    {
+        for (int i = 0; i < 5; i++)
+            letters[i] = new LetterCell();
+    }
+    protected override async Task OnInitializedAsync ()
+    {
+        await WordService.LoadAsync();
+    }
+
+    private async void OnLetterInput (int index, ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "";
+
+        if (!string.IsNullOrWhiteSpace(value))
+            value = value.Substring(0, 1).ToUpper();
+
+        letters[index].Value = value;
+
+        if (index < 4)
+        {
+            await Task.Delay(1);
+            FocusNext(index + 1);
+        }
+
+        StateHasChanged();
+    }
+    private void FocusNext (int index)
+    {
+        // JS interop needed for perfect focus (we'll ignore for now)
+    }
+
+    private void SetState (int index, int state)
+    {
+        letters[index].State = state;
+    }
+    private string GetStateClass (int state)
+    {
+        return state switch
+        {
+            1 => "yellow",
+            2 => "green",
+            _ => "grey"
+        };
+    }
+}
