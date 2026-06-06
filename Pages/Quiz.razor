@@ -4,6 +4,53 @@
 
 <h3>Quiz</h3>
 
-@code {
+<div class="card @(isFlipped ? "flipped" : "")">
 
+    <div class="card-face front">
+        <p>Pattern:</p>
+        <pre>@PatternText</pre>
+
+        <input @bind="UserGuess" />
+
+        <button @onclick="Reveal">Reveal</button>
+    </div>
+
+    <div class="card-face back">
+        @if (IsCorrect)
+        {
+            <p>+ Correct!</p>
+        }
+        else
+        {
+            <p>- Not quite</p>
+        }
+
+        <p>Best guess: @BestGuess</p>
+        <p>You put: @UserGuess</p>
+        <p>Priority: @Priority</p>
+    </div>
+
+</div>
+
+@code {
+    private bool isFlipped;
+
+    private string UserGuess = "";
+
+    public string BestGuess { get; set; } = "CRANE";
+    public double Priority { get; set; } = 0.9d;
+    public string PatternText { get; set; } = "SLATE";
+
+    private bool _hasRevealed;
+
+    private bool IsCorrect =>
+        string.Equals(UserGuess.Trim(), BestGuess, StringComparison.OrdinalIgnoreCase);
+
+    private void Reveal ()
+    {
+        if (_hasRevealed) return;
+
+        _hasRevealed = true;
+        isFlipped = true;
+    }
 }
