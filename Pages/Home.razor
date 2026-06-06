@@ -1,4 +1,6 @@
-﻿@inject WordListService WordService
+﻿@inject NavigationManager Navigation
+@inject WordListService WordService
+@inject QuizStateService QuizState
 @page "/"
 
 <PageTitle>Wordle Sweat</PageTitle>
@@ -67,50 +69,58 @@
 
     @if (_multiAvailable)
     {
-        @if (_generatingMulti)
+        int @count = _multiResult.Count(r => r.Valid);
+        @if (_forQuiz)
         {
-            <p>Generating...</p>
+            <p>Generating for test... @count</p>
         }
         else
         {
-            <p>Complete!</p>
-        }
-
-        bool tied = false;
-        @foreach (var result in _multiResult
-            .Where(r => r.Valid)
-            .OrderByDescending(r => r.Priority))
-        {
-            @if (result.Priority <= 0.5d)
+            @if (_generatingMulti)
             {
-                @if (!tied)
-                {
-                    <p>Past this point, candidate guesses are effectively tied. Use results as guidance rather than exact rankings.</p>
-                }
-
-                tied = true;
+                <p>Generating... @count</p>
+            }
+            else
+            {
+                <p>Complete! @count patterns generated.</p>
             }
 
-            <div class="result-card">
-                <div class="mini-letter-row">
-                    @for (int i = 0; i < result.Input.Length; i++)
+            bool tied = false;
+            @foreach (var result in _multiResult
+                .Where(r => r.Valid)
+                .OrderByDescending(r => r.Priority))
+            {
+                @if (result.Priority <= 0.5d)
+                {
+                    @if (!tied)
                     {
-                        var cell = result.Input[i];
-
-                        <div class="mini-letter-cell @GetStateClass(cell.State)">
-                            @cell.Value
-                        </div>
+                        <p>Past this point, candidate guesses are effectively tied. Use results as guidance rather than exact rankings.</p>
                     }
-                </div>
 
-                <div class="result-word">
-                    @result.Word
-                </div>
+                    tied = true;
+                }
 
-                <div class="result-score">
-                    @result.Priority.ToString("0.000")
+                <div class="result-card">
+                    <div class="mini-letter-row">
+                        @for (int i = 0; i < result.Input.Length; i++)
+                        {
+                            var cell = result.Input[i];
+
+                            <div class="mini-letter-cell @GetStateClass(cell.State)">
+                                @cell.Value
+                            </div>
+                        }
+                    </div>
+
+                    <div class="result-word">
+                        @result.Word
+                    </div>
+
+                    <div class="result-score">
+                        @result.Priority.ToString("0.000")
+                    </div>
                 </div>
-            </div>
+            }
         }
     }
 }
@@ -134,6 +144,8 @@ else
     private bool _generatingMulti = false;
 
     private bool _generatingAny = false;
+
+    private bool _forQuiz = false;
 
     private async Task Generate ()
     {
@@ -175,7 +187,22 @@ else
 
         _error = "";
         _singleResult = "";
-        _multiAvailable = false;
+        _forQuiz = true;
+        if (!_multiAvailable)
+        {
+            await GenerateAll();
+        }
+        if (_multiResult.Length == 0)
+        {
+            _error = "No results could be generated";
+            return;
+        }
+        // use _multiResult as selection, along with _multiResult[0].Input as input
+        QuizState.Results = _multiResult;
+        QuizState.CurrentPattern = _multiResult[0].Input;
+
+        _forQuiz = false;
+        Navigation.NavigateTo("/quiz");
     }
 
     private void ClearMultiResult(int length)

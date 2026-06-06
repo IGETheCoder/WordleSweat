@@ -6,6 +6,7 @@
         {
             string errorCode = "";
 
+            string wordLower = "";
             foreach (var cell in inputs)
             {
                 if (cell.Value.Length == 0)
@@ -18,8 +19,13 @@
                     errorCode = "Letters must be 'A-Z'";
                     return (("", 0), errorCode);
                 }
+                wordLower += cell.Value.ToLower()[0];
             }
-
+            if (!wordService.Words.Contains(wordLower))
+            {
+                errorCode = "Starting word is not valid";
+                return (("", 0), errorCode);
+            }
 
             List<string> answers = await Task.Run(() => FilterWords(wordService.Words, inputs));
 

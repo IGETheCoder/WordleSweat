@@ -9,6 +9,7 @@
             string errorCode = "";
             LetterCell[] internalInput = new LetterCell[inputs.Length];
 
+            string wordLower = "";
             for (int j = 0; j < inputs.Length; j++)
             {
                 LetterCell cell = inputs[j];
@@ -24,6 +25,12 @@
                 }
 
                 internalInput[j] = new LetterCell() { Value = cell.Value, State = 0 };
+                wordLower += cell.Value.ToLower()[0];
+            }
+            if (!wordService.Words.Contains(wordLower))
+            {
+                errorCode = "Starting word is not valid";
+                return errorCode;
             }
 
             int max = (int) Math.Pow(3, internalInput.Length);
