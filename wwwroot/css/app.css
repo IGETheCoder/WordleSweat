@@ -257,18 +257,29 @@ code {
 }
 
 .result-priority {
-    opacity: 0.7;
     font-size: 12px;
+    font-style: italic;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
 }
 
 /* QUIZ */
 
 .card {
-    width: 320px;
-    height: 200px;
+    width: 360px;
+    height: 180px;
     perspective: 1000px;
     position: relative;
     transition: transform 0.2s ease;
+}
+
+.quiz-container {
+    width: 90vw;
+    height: 90vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .card-face {
@@ -278,7 +289,7 @@ code {
     backface-visibility: hidden;
     transition: transform 0.6s;
     border-radius: 4px;
-    padding: 16px;
+    padding: 40px;
     box-sizing: border-box;
 }
 
@@ -291,6 +302,51 @@ code {
     background: #2a2a2a;
     color: white;
     transform: rotateY(180deg);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    font-size: 14px;
+}
+
+.priority-badge {
+    font-size: 12px;
+    font-style: italic;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    margin-left: auto;
+}
+
+.result-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+}
+
+.result-status {
+    margin-left: 8px;
+}
+
+.line {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.label {
+    opacity: 0.6;
+    min-width: 40px;
+}
+
+.next-btn {
+    align-self: flex-end;
 }
 
 .card.flipped .front {

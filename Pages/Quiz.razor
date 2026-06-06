@@ -2,34 +2,68 @@
 @inject NavigationManager Nav
 @inject QuizStateService QuizState
 
-<h3>Quiz</h3>
+<style>
+    body {
+        margin: 0;
+    }
+</style>
 
-<div class="card @(isFlipped ? "flipped" : "")">
+<div class="quiz-container">
+    <div class="card @(isFlipped ? "flipped" : "")">
+    
+        <div class="card-face front">
+            <div class="mini-letter-row">
+                @for (int i = 0; i < Pattern.Length; i++)
+                {
+                    var cell = Pattern[i];
+    
+                    <div class="mini-letter-cell @GetStateClass(cell.State)">
+                        @cell.Value
+                    </div>
+                }
+            </div>
+    
+            <p>What is the best guess?</p>
+    
+            <input @bind="UserGuess" />
+    
+            <button @onclick="Reveal">Reveal</button>
+        </div>
 
-    <div class="card-face front">
-        <p>Pattern:</p>
-        <pre>@PatternText</pre>
+       <div class="card-face back">
 
-        <input @bind="UserGuess" />
+            <div class="result-header">
+                <span class="result-status">
+                    @if (_snapshot.IsCorrect)
+                    {
+                        <span class="correct">Correct!</span>
+                    }
+                    else
+                    {
+                        <span class="wrong">Not quite</span>
+                    }
+                </span>
 
-        <button @onclick="Reveal">Reveal</button>
+                <span class="priority-badge">
+                    @_snapshot.Priority.ToString("0.000")
+                </span>
+            </div>
+
+            <div class="result-body">
+                <span class="line">
+                    <span class="label">Best:</span> @_snapshot.BestGuess.ToUpper()
+                </span>
+
+                <span class="line">
+                    <span class="label">You:</span> @_snapshot.UserGuess.ToUpper()
+                </span>
+            </div>
+
+            <button class="next-btn" @onclick="TryAnother">Try Another</button>
+
+        </div>
+    
     </div>
-
-    <div class="card-face back">
-        @if (IsCorrect)
-        {
-            <p>+ Correct!</p>
-        }
-        else
-        {
-            <p>- Not quite</p>
-        }
-
-        <p>Best guess: @BestGuess</p>
-        <p>You put: @UserGuess</p>
-        <p>Priority: @Priority</p>
-    </div>
-
 </div>
 
 @code {
@@ -37,20 +71,112 @@
 
     private string UserGuess = "";
 
-    public string BestGuess { get; set; } = "CRANE";
-    public double Priority { get; set; } = 0.9d;
-    public string PatternText { get; set; } = "SLATE";
+    private string BestGuess = "saint";
+    private double Priority = 0.9d;
+    private LetterCell[] Pattern = [
+        new() { Value = "E", State = 0 },
+        new() { Value = "R", State = 0 },
+        new() { Value = "R", State = 0 },
+        new() { Value = "O", State = 0 },
+        new() { Value = "R", State = 0 },
+    ];
 
-    private bool _hasRevealed;
+    private QuizRevealSnapshot _snapshot = new();
 
     private bool IsCorrect =>
         string.Equals(UserGuess.Trim(), BestGuess, StringComparison.OrdinalIgnoreCase);
+
+    private bool _hasRevealed;
+    private readonly Random _random = new();
 
     private void Reveal ()
     {
         if (_hasRevealed) return;
 
         _hasRevealed = true;
+
+        _snapshot = new QuizRevealSnapshot
+        {
+            BestGuess = BestGuess,
+            UserGuess = UserGuess,
+            Priority = Priority,
+            IsCorrect = IsCorrect
+        };
+
         isFlipped = true;
+    }
+
+    private void TryAnother()
+    {
+        LoadNextCard();
+    }
+
+    protected override void OnInitialized ()
+    {
+        LoadNextCard();
+    }
+
+    private void LoadNextCard ()
+    {
+        var selectQuery = GetRandomResult();
+
+        BestGuess = selectQuery.Word;
+        Priority = selectQuery.Priority;
+        Pattern = selectQuery.Input;
+
+        UserGuess = "";
+        isFlipped = false;
+        _hasRevealed = false;
+    }
+
+    private GenResult GetRandomResult ()
+    {
+        // select random biased element
+        double total = 0;
+        foreach (GenResult query in QuizState.Results)
+        {
+            if (!query.Valid) continue;
+
+            double weight = Math.Max(0.01, query.Priority);
+            total += weight * weight;
+        }
+
+        double random = _random.NextDouble() * total;
+        GenResult? selectQuery = null;
+        foreach (GenResult query in QuizState.Results)
+        {
+            if (!query.Valid) continue;
+
+            random -= query.Priority * query.Priority;
+            if (random < 0)
+            {
+                selectQuery = query;
+                break;
+            }
+        }
+        if (selectQuery == null)
+        {
+            Console.WriteLine("No query could be selected");
+            throw new Exception("No query could be selected");
+        }
+        return selectQuery;
+    }
+
+    private string GetStateClass (int state)
+    {
+        return state switch
+        {
+            1 => "yellow",
+            2 => "green",
+            _ => "grey"
+        };
+    }
+
+    private sealed class QuizRevealSnapshot
+    {
+        public string BestGuess { get; init; } = "";
+        public string UserGuess { get; init; } = "";
+        public double Priority { get; init; }
+        public bool IsCorrect { get; init; }
     }
 }
