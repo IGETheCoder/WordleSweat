@@ -49,7 +49,10 @@
     }
     else if (!string.IsNullOrEmpty(_singleResult))
     {
-        <p>@_singleResult</p>
+        <div class="result-card">
+            <div class="result-word">@_singleResult</div>
+            <div class="result-priority">@_resultPriority.ToString("0.00")</div>
+        </div>
     }
 
     @if (_multiAvailable)
@@ -63,13 +66,30 @@
             <p>Complete!</p>
         }
 
-        var ordered = _multiResult.OrderByDescending(r => r.priority);
-        @foreach (var result in ordered)
+        @foreach (var result in _multiResult
+            .Where(r => r.Valid)
+            .OrderByDescending(r => r.Priority))
         {
-            @if (result.valid)
-            {
-                <p>@result.word</p>
-            }
+            <div class="result-card">
+                <div class="mini-letter-row">
+                    @for (int i = 0; i < result.Input.Length; i++)
+                    {
+                        var cell = result.Input[i];
+
+                        <div class="mini-letter-cell @GetStateClass(cell.State)">
+                            @cell.Value
+                        </div>
+                    }
+                </div>
+
+                <div class="result-word">
+                    @result.Word
+                </div>
+
+                <div class="result-score">
+                    @result.Priority.ToString("0.000")
+                </div>
+            </div>
         }
     }
 }
@@ -85,6 +105,7 @@ else
 
     private string _error = "";
     private string _singleResult = "";
+    private double _resultPriority = 0;
     private GenResult[] _multiResult = new GenResult[243]; //word , priority
     private bool _multiAvailable = false;
 
@@ -105,7 +126,7 @@ else
         _multiAvailable = false;
 
         await InvokeAsync(StateHasChanged);
-        (_singleResult, _error) = await GenerateBest.Generate(letters, WordService);
+        ((_singleResult, _resultPriority), _error) = await GenerateBest.Generate(letters, WordService);
 
         _generatingSingle = false;
         _generatingAny = false;
@@ -142,9 +163,14 @@ else
     protected override void OnInitialized ()
     {
         GenerateBestAll.OnProgress += () => InvokeAsync(StateHasChanged);
-        
-        for (int i = 0; i < 5; i++)
-            letters[i] = new();
+
+        letters = [
+            new() { Value = "S" },
+            new() { Value = "L" },
+            new() { Value = "A" },
+            new() { Value = "T" },
+            new() { Value = "E" }];
+
         ClearMultiResult(0);
     }
     protected override async Task OnInitializedAsync ()

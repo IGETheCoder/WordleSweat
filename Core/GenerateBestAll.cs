@@ -27,7 +27,6 @@
             }
 
             int max = (int) Math.Pow(3, internalInput.Length);
-
             for (int i = 0; i < max; i++)
             {
                 int temp = i;
@@ -44,7 +43,7 @@
                 for (int j = 0; j < answers.Count; j++)
                     answersArray[j] = GenerateBest.ConvertStringToIntArr(answers[j].ToUpper());
 
-                (GenResult result, errorCode) = await GenerateBest.GenerateRaw(answersArray, wordService.Words);
+                (GenResult result, errorCode) = await GenerateBest.GenerateRaw(answersArray, wordService.Words, internalInput);
                 if (errorCode != "No more moves left")
                 {
                     results[i] = result;
@@ -53,7 +52,6 @@
                 else
                     errorCode = "";
             }
-
             return errorCode;
         }
     }

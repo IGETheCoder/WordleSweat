@@ -2,7 +2,7 @@
 {
     internal static class GenerateBest
     {
-        public static async Task<(string, string)> Generate (LetterCell[] inputs, WordListService wordService)
+        public static async Task<((string, double), string)> Generate (LetterCell[] inputs, WordListService wordService)
         {
             string errorCode = "";
 
@@ -11,23 +11,30 @@
                 if (cell.Value.Length == 0)
                 {
                     errorCode = "Incomplete input";
-                    return ("", errorCode);
+                    return (("", 0), errorCode);
                 }
                 if (!IsEnglishLetter(cell.Value[0]))
                 {
                     errorCode = "Letters must be 'A-Z'";
-                    return ("", errorCode);
+                    return (("", 0), errorCode);
                 }
             }
 
+
             List<string> answers = await Task.Run(() => FilterWords(wordService.Words, inputs));
+
+            Console.WriteLine($"Answer remaining count: {answers.Count}");
+
             // format answers list
             var answersArray = new int[answers.Count][];
             for (int i = 0; i < answers.Count; i++)
                 answersArray[i] = ConvertStringToIntArr(answers[i].ToUpper());
 
-            (GenResult result, errorCode) = await GenerateRaw(answersArray, wordService.Words);
-            return (result.word, errorCode);
+            (GenResult result, errorCode) = await GenerateRaw(answersArray, wordService.Words, inputs);
+
+            Console.WriteLine($"Result: {result.Word}");
+
+            return ((result.Word, result.Priority), errorCode);
         }
 
         /// <summary>
@@ -43,7 +50,7 @@
             return value;
         }
 
-        public static async Task<(GenResult, string)> GenerateRaw (int[][] answers, List<string> unformattedGuesses)
+        public static async Task<(GenResult, string)> GenerateRaw (int[][] answers, List<string> unformattedGuesses, LetterCell[] input)
         {
             string errorCode = "";
 
@@ -82,7 +89,7 @@
             double normalizedScore = (double) smallestScore / (answers.Length * answers.Length);
             double priority = 1.0 - normalizedScore;
 
-            return (new(bestWord, priority), errorCode);
+            return (new(bestWord, priority, input), errorCode);
         }
         private static long ScoreGuess (int[] guess, int[][] remainingAnswers, int bucketSize)
         {
