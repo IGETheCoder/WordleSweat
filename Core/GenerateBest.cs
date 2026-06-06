@@ -1,4 +1,6 @@
-﻿namespace WordleSweat.Core
+﻿using System.Diagnostics;
+
+namespace WordleSweat.Core
 {
     internal static class GenerateBest
     {
@@ -23,18 +25,33 @@
             List<string> answers = await Task.Run(() => FilterWords(wordService.Words, inputs));
 
             // format answers list ToUpper
-            var answersArray = new string[answers.Count];
+            var answersArray = new int[answers.Count][];
             for (int i = 0; i < answers.Count; i++)
-                answersArray[i] = answers[i].ToUpper();
+            {
+                answersArray[i] = ConvertStringToIntArr (answers[i].ToUpper());
+            }
 
-            return await GenRaw(answersArray.ToList(), wordService.Words);
+            return await GenRaw(answersArray, wordService.Words);
         }
 
-        public static async Task<(string, string)> GenRaw (List<string> answers, List<string> unformattedGuesses)
+        /// <summary>
+        /// `str` expected to be upper
+        /// </summary>
+        private static int[] ConvertStringToIntArr (string str)
+        {
+            int[] value = new int[str.Length];
+            for (int i = 0; i < str.Length; i++)
+            {
+                value[i] = str[i] - 'A';
+            }
+            return value;
+        }
+
+        public static async Task<(string, string)> GenRaw (int[][] answers, List<string> unformattedGuesses)
         {
             string errorCode = "";
 
-            if (answers.Count == 0)
+            if (answers.Length == 0)
             {
                 errorCode = "No more moves left";
                 return ("", errorCode);
@@ -42,37 +59,55 @@
 
             Dictionary<string, long> scores = []; //answer , score
 
+            var sw = Stopwatch.StartNew();
             await Task.Run(() =>
             {
                 int bucketSize = (int) Math.Pow(3, answers[0].Length);
 
-                foreach (string w in unformattedGuesses)
+                Parallel.ForEach(unformattedGuesses, guess => // 2732.0 ms average
                 {
-                    string word = w.ToUpper();
-
+                    string wordStr = guess.ToUpper();
+                    int[] word = ConvertStringToIntArr(wordStr);
+                
                     long score = ScoreGuess(word, answers, bucketSize);
-                    scores.Add(word, score);
-
-                    Console.WriteLine($"word: {word} score: {score}");
-                }
+                    scores.Add(wordStr, score);
+                
+                    Console.WriteLine($"word: {wordStr} score: {score}");
+                });
+                //foreach (string guess in unformattedGuesses) // 2813.3 ms average
+                //{
+                //    string wordStr = guess.ToUpper();
+                //    int[] word = ConvertStringToIntArr(wordStr);
+                //
+                //    long score = ScoreGuess(word, answers, bucketSize);
+                //    scores.Add(wordStr, score);
+                //
+                //    Console.WriteLine($"word: {wordStr} score: {score}");
+                //}
             });
+            sw.Stop();
+
+            Console.WriteLine($"Task took: {sw.ElapsedMilliseconds} ms");
 
             string finalWord =
                 scores.MinBy(entry => entry.Value).Key;
 
             return (finalWord.ToUpper(), errorCode);
         }
-        private static long ScoreGuess (string guess, List<string> remainingAnswers, int bucketSize)
+        private static long ScoreGuess (int[] guess, int[][] remainingAnswers, int bucketSize)
         {
             long[] buckets = new long[bucketSize];
 
             for (int i = 0; i < buckets.Length; i++)
                 buckets[i] = 0; // reset all buckets
 
-            foreach (string answer in remainingAnswers)
+            //Parallel.ForEach(remainingAnswers, answer => // 3076.0 ms average
+            //{
+            //    int pattern = GetPattern(guess, answer);
+            //    buckets[pattern]++;
+            //});
+            foreach (int[] answer in remainingAnswers) // 2732.0 ms average
             {
-                // if (guess == answer) continue;
-
                 int pattern = GetPattern(guess, answer);
                 buckets[pattern]++;
             }
@@ -84,7 +119,7 @@
 
             return score;
         }
-        private static int GetPattern (string guess, string answer)
+        private static int GetPattern (int[] guess, int[] answer)
         {
             Span<byte> pattern = stackalloc byte[guess.Length];
             byte forbiddenIndexs = 0;
