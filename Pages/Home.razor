@@ -37,6 +37,9 @@
 <button @onclick="GenerateAll">
     Generate All
 </button>
+<button @onclick="Test">
+    Test Me
+</button>
 
 @if (string.IsNullOrEmpty(_error))
 {
@@ -47,6 +50,22 @@
     else if (!string.IsNullOrEmpty(_singleResult))
     {
         <p>@_singleResult</p>
+    }
+
+    @if (_generatingMulti || _multiResult.Any(r => r.valid))
+    {
+        @if (_generatingMulti)
+        {
+            <p>Generating...</p>
+        }
+        var ordered = _multiResult.OrderByDescending(r => r.priority);
+        @foreach (var result in ordered)
+        {
+            @if (result.valid)
+            {
+                <p>@result.word</p>
+            }
+        }
     }
 }
 else
@@ -59,29 +78,66 @@ else
 @code {
     private LetterCell[] letters = new LetterCell[5];
 
-    private string _singleResult = "";
     private string _error = "";
+    private string _singleResult = "";
+    private GenResult[] _multiResult = new GenResult[243]; //word , priority
+
     private bool _generatingSingle = false;
+    private bool _generatingMulti = false;
+
+    private bool _generatingAny = false;
 
     private async Task Generate ()
     {
+        if (_generatingAny) return;
+        _generatingAny = true;
+
+        _error = "";
         _singleResult = "";
+        ClearMultiResult(0);
         _generatingSingle = true;
 
         await InvokeAsync(StateHasChanged);
         (_singleResult, _error) = await GenerateBest.Gen(letters, WordService);
 
         _generatingSingle = false;
+        _generatingAny = false;
     }
     private async Task GenerateAll ()
     {
-        
+        if (_generatingAny) return;
+        _generatingAny = true;
+
+        _error = "";
+        _singleResult = "";
+        ClearMultiResult((int) Math.Pow(3,5));
+        _generatingMulti = true;
+
+        await InvokeAsync(StateHasChanged);
+        _multiResult[0] = new("word1", 1);
+        _multiResult[1] = new("word2", 2);
+        _multiResult[2] = new("word3", 3);
+
+        _generatingMulti = false;
+        _generatingAny = false;
+    }
+    private async Task Test ()
+    {
+
+    }
+
+    private void ClearMultiResult(int length)
+    {
+        _multiResult = new GenResult[length];
+        for (int i = 0; i < length; i++)
+            _multiResult[i] = new();
     }
 
     protected override void OnInitialized ()
     {
         for (int i = 0; i < 5; i++)
-            letters[i] = new LetterCell();
+            letters[i] = new();
+        ClearMultiResult(0);
     }
     protected override async Task OnInitializedAsync ()
     {

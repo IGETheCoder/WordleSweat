@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace WordleSweat.Core
+﻿namespace WordleSweat.Core
 {
     internal static class GenerateBest
     {
@@ -27,11 +25,10 @@ namespace WordleSweat.Core
             // format answers list ToUpper
             var answersArray = new int[answers.Count][];
             for (int i = 0; i < answers.Count; i++)
-            {
-                answersArray[i] = ConvertStringToIntArr (answers[i].ToUpper());
-            }
+                answersArray[i] = ConvertStringToIntArr(answers[i].ToUpper());
 
-            return await GenRaw(answersArray, wordService.Words);
+            (GenResult result, errorCode) = await GenRaw(answersArray, wordService.Words);
+            return (result.word, errorCode);
         }
 
         /// <summary>
@@ -47,56 +44,50 @@ namespace WordleSweat.Core
             return value;
         }
 
-        public static async Task<(string, string)> GenRaw (int[][] answers, List<string> unformattedGuesses)
+        public static async Task<(GenResult, string)> GenRaw (int[][] answers, List<string> unformattedGuesses)
         {
             string errorCode = "";
 
             if (answers.Length == 0)
             {
                 errorCode = "No more moves left";
-                return ("", errorCode);
+                return (new(), errorCode);
             }
 
-            Dictionary<string, long> scores = []; //answer , score
+            int bucketSize = (int) Math.Pow(3, answers[0].Length);
 
-            var sw = Stopwatch.StartNew();
+            string bestWord = "";
+            long smallestScore = long.MaxValue;
+
+            object lockObj = new();
             await Task.Run(() =>
             {
-                int bucketSize = (int) Math.Pow(3, answers[0].Length);
-
-                Parallel.ForEach(unformattedGuesses, guess => // 2732.0 ms average
+                Parallel.ForEach(unformattedGuesses, guess =>
                 {
                     string wordStr = guess.ToUpper();
                     int[] word = ConvertStringToIntArr(wordStr);
-                
+
                     long score = ScoreGuess(word, answers, bucketSize);
-                    scores.Add(wordStr, score);
-                
-                    Console.WriteLine($"word: {wordStr} score: {score}");
+
+                    lock (lockObj)
+                    {
+                        if (score < smallestScore)
+                        {
+                            smallestScore = score;
+                            bestWord = wordStr;
+                        }
+                    }
                 });
-                //foreach (string guess in unformattedGuesses) // 2813.3 ms average
-                //{
-                //    string wordStr = guess.ToUpper();
-                //    int[] word = ConvertStringToIntArr(wordStr);
-                //
-                //    long score = ScoreGuess(word, answers, bucketSize);
-                //    scores.Add(wordStr, score);
-                //
-                //    Console.WriteLine($"word: {wordStr} score: {score}");
-                //}
             });
-            sw.Stop();
 
-            Console.WriteLine($"Task took: {sw.ElapsedMilliseconds} ms");
+            double normalizedScore = (double) smallestScore / (answers.Length * answers.Length);
+            double priority = 1.0 - normalizedScore;
 
-            string finalWord =
-                scores.MinBy(entry => entry.Value).Key;
-
-            return (finalWord.ToUpper(), errorCode);
+            return (new(bestWord, priority), errorCode);
         }
         private static long ScoreGuess (int[] guess, int[][] remainingAnswers, int bucketSize)
         {
-            long[] buckets = new long[bucketSize];
+            int[] buckets = new int[bucketSize];
 
             for (int i = 0; i < buckets.Length; i++)
                 buckets[i] = 0; // reset all buckets
