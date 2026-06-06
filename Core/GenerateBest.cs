@@ -130,7 +130,7 @@
                     forbiddenIndexs += (byte) (1 << i);
                 }
             }
-            // yellows TODO
+            // yellows
             for (int i = 0; i < answer.Length; i++)
             {
                 if (pattern[i] == 0) // not green
