@@ -52,12 +52,17 @@
         <p>@_singleResult</p>
     }
 
-    @if (_generatingMulti || _multiResult.Any(r => r.valid))
+    @if (_multiAvailable)
     {
         @if (_generatingMulti)
         {
             <p>Generating...</p>
         }
+        else
+        {
+            <p>Complete!</p>
+        }
+
         var ordered = _multiResult.OrderByDescending(r => r.priority);
         @foreach (var result in ordered)
         {
@@ -81,6 +86,7 @@ else
     private string _error = "";
     private string _singleResult = "";
     private GenResult[] _multiResult = new GenResult[243]; //word , priority
+    private bool _multiAvailable = false;
 
     private bool _generatingSingle = false;
     private bool _generatingMulti = false;
@@ -96,9 +102,10 @@ else
         _singleResult = "";
         ClearMultiResult(0);
         _generatingSingle = true;
+        _multiAvailable = false;
 
         await InvokeAsync(StateHasChanged);
-        (_singleResult, _error) = await GenerateBest.Gen(letters, WordService);
+        (_singleResult, _error) = await GenerateBest.Generate(letters, WordService);
 
         _generatingSingle = false;
         _generatingAny = false;
@@ -112,18 +119,17 @@ else
         _singleResult = "";
         ClearMultiResult((int) Math.Pow(3,5));
         _generatingMulti = true;
+        _multiAvailable = true;
 
         await InvokeAsync(StateHasChanged);
-        _multiResult[0] = new("word1", 1);
-        _multiResult[1] = new("word2", 2);
-        _multiResult[2] = new("word3", 3);
+        _error = await GenerateBestAll.GenerateAll(letters, WordService, _multiResult);
 
         _generatingMulti = false;
         _generatingAny = false;
     }
     private async Task Test ()
     {
-
+        _multiAvailable = false;
     }
 
     private void ClearMultiResult(int length)
@@ -135,6 +141,8 @@ else
 
     protected override void OnInitialized ()
     {
+        GenerateBestAll.OnProgress += () => InvokeAsync(StateHasChanged);
+        
         for (int i = 0; i < 5; i++)
             letters[i] = new();
         ClearMultiResult(0);

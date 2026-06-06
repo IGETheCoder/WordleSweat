@@ -2,7 +2,7 @@
 {
     internal static class GenerateBest
     {
-        public static async Task<(string, string)> Gen (LetterCell[] inputs, WordListService wordService)
+        public static async Task<(string, string)> Generate (LetterCell[] inputs, WordListService wordService)
         {
             string errorCode = "";
 
@@ -21,20 +21,19 @@
             }
 
             List<string> answers = await Task.Run(() => FilterWords(wordService.Words, inputs));
-
-            // format answers list ToUpper
+            // format answers list
             var answersArray = new int[answers.Count][];
             for (int i = 0; i < answers.Count; i++)
                 answersArray[i] = ConvertStringToIntArr(answers[i].ToUpper());
 
-            (GenResult result, errorCode) = await GenRaw(answersArray, wordService.Words);
+            (GenResult result, errorCode) = await GenerateRaw(answersArray, wordService.Words);
             return (result.word, errorCode);
         }
 
         /// <summary>
         /// `str` expected to be upper
         /// </summary>
-        private static int[] ConvertStringToIntArr (string str)
+        internal static int[] ConvertStringToIntArr (string str)
         {
             int[] value = new int[str.Length];
             for (int i = 0; i < str.Length; i++)
@@ -44,7 +43,7 @@
             return value;
         }
 
-        public static async Task<(GenResult, string)> GenRaw (int[][] answers, List<string> unformattedGuesses)
+        public static async Task<(GenResult, string)> GenerateRaw (int[][] answers, List<string> unformattedGuesses)
         {
             string errorCode = "";
 
@@ -146,7 +145,7 @@
                 value = value * 3 + digit;
             return value;
         }
-        private static List<string> FilterWords (List<string> guesses, LetterCell[] filter)
+        internal static List<string> FilterWords (List<string> guesses, LetterCell[] filter)
         {
             List<string> filtered = [];
 
@@ -222,7 +221,7 @@
             return true;
         }
 
-        private static bool IsEnglishLetter (char c)
+        internal static bool IsEnglishLetter (char c)
         {
             c = char.ToUpper(c);
             return c >= 'A' && c <= 'Z';
