@@ -50,6 +50,15 @@
     }
     else if (!string.IsNullOrEmpty(_singleResult))
     {
+        @if (_resultPriority <= 0.5d)
+        {
+            <p>Candidate guesses are effectively tied. Use results as guidance rather than exact rankings.</p>
+        }
+        else
+        {
+            <p>Complete!</p>
+        }
+
         <div class="result-card">
             <div class="result-word">@_singleResult</div>
             <div class="result-priority">@_resultPriority.ToString("0.00")</div>
@@ -76,7 +85,7 @@
             {
                 @if (!tied)
                 {
-                    <p>Past this point, results are too even to give meaningful answers</p>
+                    <p>Past this point, candidate guesses are effectively tied. Use results as guidance rather than exact rankings.</p>
                 }
 
                 tied = true;
